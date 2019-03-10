@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import random
 
 predict = lambda output: 0 if output<0.5 else 1
 update_weight = lambda weight,alpha,delta: weight-alpha*delta
@@ -17,11 +16,10 @@ def outputFn(inputs, weights, bias):
 def delta_weight(target,output,inpoet=1):
     return 2*(output-target)*(1-output)*output*inpoet
 
-
-def train_weights(train,weights,bias, rate, n_epoch):    
+def train_weights(train,weights,bias, alpha, n_epoch):    
     weights = weights[:]    
-    errors=[]   #300 element
-    accuracy=[] #300 element
+    errors=[]
+    accuracy=[]
     for epoch in range(n_epoch):
         sum_error = 0.0        
         predictions = []
@@ -34,21 +32,22 @@ def train_weights(train,weights,bias, rate, n_epoch):
             predictions.append(prediction)
             targets.append(row[-1])
 
-            #calcu
+            #calculate error
             error = lostFn(row[-1],output)
             sum_error += error
 
 
             #update weight and bias
-            bias = update_weight(bias,rate,delta_weight(row[-1],output,1))    #new bias        
+            bias = update_weight(bias,alpha,delta_weight(row[-1],output,1))    #new bias        
             for i in range(len(weights)):
-                weights[i] = update_weight(weights[i],rate,delta_weight(row[-1],output,row[i]))
+                weights[i] = update_weight(weights[i],alpha,delta_weight(row[-1],output,row[i]))
         
         errors.append(sum_error)        
         accuracy.append(calculate_accuracy(targets,predictions))
+
     return (weights,bias,errors,accuracy)
 
-# Split a dataset into k folds
+# Split a dataset into n folds
 def cross_validation_split(dataset, n_folds):
     dataset_split = list()
     dataset_copy = list(dataset)
@@ -56,7 +55,7 @@ def cross_validation_split(dataset, n_folds):
     for i in range(n_folds):
         fold = list()
         while len(fold) < fold_size:
-            index = random.randrange(len(dataset_copy))
+            index = np.random.randint(len(dataset_copy))
             fold.append(dataset_copy.pop(index))
         dataset_split.append(fold)
     return dataset_split
@@ -66,12 +65,13 @@ def calculate_accuracy(targets,predictions):
     n_data=len(targets)
     for i in range(n_data):
         if(targets[i]==predictions[i]): correct+=1
+    #return in percentage (%)
     return correct/n_data*100.0
 
-def validation(train, test, weights,bias, rate, n_epoch):    
-    weights,bias,train_errors,train_accuracy = train_weights(train,weights,bias, rate, n_epoch)    
-    test_errors = [] #300 element
-    test_accuracy = [] #300 element
+def validation(train, test, weights,bias, alpha, n_epoch):    
+    weights,bias,train_errors,train_accuracy = train_weights(train,weights,bias, alpha, n_epoch)    
+    test_errors = [] 
+    test_accuracy = []
     for epoch in range(300):
         sum_error=0
         predictions = []
@@ -95,6 +95,7 @@ def train_test_split(folds,test_index):
     test = list(test)  
     train = sum(train,[])  
     return (train,test)
+
 def draw_graph(data_train,data_test,label,ylabel,title):
     plt.plot(data_train,label=label+' (Train)')
     plt.plot(data_test,label=label+' (Test)')
@@ -121,11 +122,14 @@ def main(dataset, n_folds, *args):
         train_accuracy_folds.append(result[2])
         test_accuracy_folds.append(result[3])              
     
+    #draw average errors (train and test) for n fold
     draw_graph(np.mean(train_errors_folds,axis=0),
                 np.mean(test_errors_folds,axis=0),
                 'Average Error',
                 'Error',
-                'Grafik Error (alpha='+str(args[2])+')')    
+                'Grafik Error (alpha='+str(args[2])+')')   
+
+    #draw average accuracy (train and test) for n fold
     draw_graph(np.mean(train_accuracy_folds,axis=0),
                 np.mean(test_accuracy_folds,axis=0),
                 'Average Accuracy',
@@ -144,5 +148,7 @@ n_epoch = 300
 k_fold = 5
 weights_init = [0.5 for i in range(4)]
 bias_init = 0.5
+
+#using learning rate (alpha) = 0.2 and 0.8
 main(training_data, k_fold,weights_init,bias_init, 0.2, n_epoch)
 main(training_data, k_fold,weights_init,bias_init, 0.8, n_epoch)
